@@ -1,10 +1,3 @@
-"""
-Account API Service Test Suite
-
-Test cases can be run with the following:
-  nosetests -v --with-spec --spec-color
-  coverage report -m
-"""
 import os
 import logging
 from unittest import TestCase
@@ -37,13 +30,13 @@ class TestAccountService(TestCase):
 
     @classmethod
     def tearDownClass(cls):
-        """Runs once before test suite"""
+        """Runs once after the test suite"""
+        pass
 
     def setUp(self):
         """Runs before each test"""
         db.session.query(Account).delete()  # clean up the last tests
         db.session.commit()
-
         self.client = app.test_client()
 
     def tearDown(self):
@@ -60,14 +53,27 @@ class TestAccountService(TestCase):
         for _ in range(count):
             account = AccountFactory()
             response = self.client.post(BASE_URL, json=account.serialize())
+
+            # Assert account creation was successful
             self.assertEqual(
                 response.status_code,
                 status.HTTP_201_CREATED,
                 "Could not create test Account",
             )
+
+            # Retrieve the created account from the response
             new_account = response.get_json()
-            account.id = new_account["id"]
+            account.id = new_account["id"]  # Assign the ID to the account object
             accounts.append(account)
+
+            # Debugging: Print account details
+            print(f"Created account with ID: {account.id}, Name: {account.name}")  # Debugging
+
+            # After creation, commit and query the account to ensure it exists
+            db.session.commit()
+            db_account = Account.query.get(account.id)
+            self.assertIsNotNone(db_account, "Account should exist in the database")
+
         return accounts
 
     ######################################################################
@@ -96,11 +102,11 @@ class TestAccountService(TestCase):
         )
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
-        # Make sure location header is set
+        # Ensure Location header is set (should point to the newly created resource)
         location = response.headers.get("Location", None)
         self.assertIsNotNone(location)
 
-        # Check the data is correct
+        # Check that the returned data matches the account we created
         new_account = response.get_json()
         self.assertEqual(new_account["name"], account.name)
         self.assertEqual(new_account["email"], account.email)
@@ -123,4 +129,35 @@ class TestAccountService(TestCase):
         )
         self.assertEqual(response.status_code, status.HTTP_415_UNSUPPORTED_MEDIA_TYPE)
 
-    # ADD YOUR TEST CASES HERE ...
+    def test_get_account(self):
+        """It should Read a single Account"""
+        # Create an account using the helper method
+        account = self._create_accounts(1)[0]
+
+        # Assert that the account has a valid ID
+        self.assertIsNotNone(account.id, "Account ID should not be None after creation")
+
+        # Fetch the account directly from the database to ensure it exists
+        db_account = Account.query.get(account.id)
+        self.assertIsNotNone(db_account, "Account should exist in the database")
+
+        # Send a GET request to read the account by ID
+        resp = self.client.get(
+            f"{BASE_URL}/{account.id}", content_type="application/json"
+        )
+
+        # Assert the response status is HTTP 200 OK
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+
+        # Get the data from the response and verify it matches the created account
+        data = resp.get_json()
+        self.assertEqual(data["name"], account.name)
+        self.assertEqual(data["email"], account.email)
+        self.assertEqual(data["address"], account.address)
+        self.assertEqual(data["phone_number"], account.phone_number)
+        self.assertEqual(data["date_joined"], str(account.date_joined))
+
+    def test_account_not_found(self):
+        """It should not Read an Account that is not found"""
+        resp = self.client.get(f"{BASE_URL}/0")  # Try to get an account with an invalid ID
+        self.assertEqual(resp.status_code, status.HTTP_404_NOT_FOUND)
