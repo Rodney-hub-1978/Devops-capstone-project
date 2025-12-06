@@ -1,0 +1,22 @@
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: deploy
+spec:
+  description: Deploys the application
+  workspaces:
+    - name: source
+  params:
+    - name: image
+      type: string
+  steps:
+    - name: deploy
+      image: alpine:3
+      workingDir: $(workspaces.source.path)
+      script: |
+        echo "=== Deploying: $(params.image) ==="
+        echo "✓ Deployment simulation complete"
+        echo "✓ Exercise 8: Deploy task executed successfully"
+      securityContext:
+        runAsUser: 1001900000
+        runAsNonRoot: true

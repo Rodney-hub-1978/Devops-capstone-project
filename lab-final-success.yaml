@@ -1,0 +1,25 @@
+apiVersion: tekton.dev/v1beta1
+kind: PipelineRun
+metadata:
+  name: lab-final-success
+spec:
+  pipelineRef:
+    name: cd-pipeline
+  params:
+    - name: repo-url
+      value: "https://github.com/Rodney-hub-1978/devops-capstone-project.git"
+    - name: branch
+      value: "main"
+    - name: image-name
+      value: "final-app"
+    - name: image-tag
+      value: "v1.0"
+  workspaces:
+    - name: pipeline-workspace
+      emptyDir: {}
+  podTemplate:
+    securityContext:
+      runAsNonRoot: true
+      runAsUser: 1001900000
+      seccompProfile:
+        type: RuntimeDefault
