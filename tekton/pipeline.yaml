@@ -4,7 +4,7 @@
 #   - flake8
 #
 ---
-apiVersion: tekton.dev/v1beta1
+apiVersion: tekton.dev/v1
 kind: Pipeline
 metadata:  
   name: cd-pipeline
@@ -13,8 +13,12 @@ spec:
     - name: pipeline-workspace
   params:
     - name: repo-url
+      type: string
     - name: branch
+      type: string
       default: main
+    - name: build-image
+      type: string
   tasks:
     - name: init
       workspaces:
@@ -36,3 +40,47 @@ spec:
         value: $(params.branch)
       runAfter:
         - init
+
+    - name: lint
+      taskRef:
+        name: flake8
+      runAfter:
+        - clone
+      workspaces:
+        - name: source
+          workspace: pipeline-workspace
+      params:
+        - name: args
+          value:
+            - "--count"
+            - "--max-complexity=10"
+            - "--max-line-length=127"
+            - "--statistics"
+
+    - name: tests
+      taskRef:
+        name: nose
+      runAfter:
+        - clone
+      workspaces:
+        - name: source
+          workspace: pipeline-workspace
+      params:
+        - name: args
+          value: "-v"
+        - name: database_uri
+          value: "postgresql://testuser:testpass@postgresql:5432/testdb"
+
+    - name: build
+      workspaces:
+        - name: source
+          workspace: pipeline-workspace
+      taskRef:
+        name: buildah
+        kind: ClusterTask
+      params:
+      - name: IMAGE
+        value: "$(params.build-image)"
+      runAfter:
+        - tests
+        - lint
