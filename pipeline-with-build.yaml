@@ -1,0 +1,84 @@
+apiVersion: tekton.dev/v1beta1
+kind: Pipeline
+metadata:
+  name: cd-pipeline
+spec:
+  workspaces:
+    - name: pipeline-workspace
+  params:
+    - name: repo-url
+      type: string
+      default: "https://github.com/Rodney-hub-1978/devops-capstone-project.git"
+    - name: branch
+      type: string
+      default: "main"
+    - name: image-name
+      type: string
+      default: "my-app"
+    - name: image-tag
+      type: string
+      default: "latest"
+  tasks:
+    # Task 1: Clone repository
+    - name: clone
+      taskRef:
+        name: git-clone
+      workspaces:
+        - name: output
+          workspace: pipeline-workspace
+      params:
+        - name: url
+          value: "$(params.repo-url)"
+        - name: revision
+          value: "$(params.branch)"
+    
+    # Task 2: Lint code (Exercise 3)
+    - name: lint
+      taskRef:
+        name: flake8
+      workspaces:
+        - name: source
+          workspace: pipeline-workspace
+      params:
+        - name: image
+          value: "python:3.9-slim"
+        - name: args
+          value:
+            - "--count"
+            - "--max-complexity=10"
+            - "--max-line-length=127"
+            - "--statistics"
+      runAfter:
+        - clone
+    
+    # Task 3: Run tests (Exercises 4 & 5)
+    - name: test
+      taskRef:
+        name: nose
+      workspaces:
+        - name: source
+          workspace: pipeline-workspace
+      params:
+        - name: args
+          value: "-v"
+        - name: database_uri
+          value: "sqlite:///test.db"
+      runAfter:
+        - lint
+    
+    # Task 4: Build image (Exercises 7 & 8)
+    - name: build
+      taskRef:
+        name: build
+      workspaces:
+        - name: source
+          workspace: pipeline-workspace
+      params:
+        - name: image
+          value: "$(params.image-name)"
+        - name: tag
+          value: "$(params.image-tag)"
+        - name: dockerfile
+          value: "Dockerfile"
+      runAfter:
+        - test

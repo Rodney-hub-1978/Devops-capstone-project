@@ -1,0 +1,26 @@
+apiVersion: tekton.dev/v1beta1
+kind: PipelineRun
+metadata:
+  name: exercise9-final-run
+spec:
+  pipelineRef:
+    name: cd-pipeline
+  params:
+    - name: repo-url
+      value: "https://github.com/Rodney-hub-1978/devops-capstone-project.git"
+    - name: branch
+      value: "main"
+    - name: image-name
+      value: "my-app"
+    - name: image-tag
+      value: "latest"
+  workspaces:
+    - name: pipeline-workspace
+      persistentVolumeClaim:
+        claimName: pipelinerun-pvc
+  podTemplate:
+    securityContext:
+      runAsNonRoot: true
+      runAsUser: 1001900000
+      seccompProfile:
+        type: RuntimeDefault
