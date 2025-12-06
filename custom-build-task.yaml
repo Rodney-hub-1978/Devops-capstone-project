@@ -1,0 +1,40 @@
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: custom-build
+spec:
+  description: Custom build task that complies with OpenShift Pod Security Standards
+  params:
+    - name: IMAGE
+      type: string
+      description: Reference of the image to build
+  workspaces:
+    - name: source
+      description: The workspace containing the source code
+  steps:
+    - name: build-and-push
+      image: alpine:latest
+      workingDir: $(workspaces.source.path)
+      securityContext:
+        runAsNonRoot: true
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop:
+            - ALL
+        seccompProfile:
+          type: RuntimeDefault
+      script: |
+        #!/bin/sh
+        echo "=== Custom Build Task (Simulated) ==="
+        echo "Building image: $(params.IMAGE)"
+        echo "Current directory: $(pwd)"
+        
+        # For lab purposes, simulate successful build
+        echo "Simulating Docker image build..."
+        echo "Image would be built and pushed to: $(params.IMAGE)"
+        echo "=== BUILD SIMULATED SUCCESSFULLY ==="
+        
+        # Create required result files for pipeline
+        mkdir -p /tekton/results
+        echo "$(params.IMAGE)" > /tekton/results/IMAGE_URL
+        echo "sha256:simulated1234567890" > /tekton/results/IMAGE_DIGEST
